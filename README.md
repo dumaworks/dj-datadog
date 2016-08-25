@@ -45,7 +45,7 @@ stream in the case of an app exception.
 
 You will also have new timing metrics available:
 
-- `my_app.request_time.{avg,max,min}`
+- `my_app.response_time.{avg,max,min}`
 - `my_app.errors`
 
 Metrics are tagged with `path:/path/to/view`
