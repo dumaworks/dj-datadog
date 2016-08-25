@@ -1,30 +1,34 @@
 # std lib
 import time
 import traceback
+
 try:
     import json
 except ImportError:
     import simplejson as json
+
+# six
+from six import integer_types, string_types
 
 # django
 from django.conf import settings
 from django.http import Http404
 
 # datadog
-from datadog import initialize, api
-from datadog import statsd
+from datadog import api, initialize, statsd
+
 
 # init datadog api
 initialize(api_key=settings.DATADOG_API_KEY, app_key=settings.DATADOG_APP_KEY)
 
 
 class DatadogMiddleware(object):
-    DD_TIMING_ATTRIBUTE = '_dd_start_time'
+    DD_TIMING_ATTRIBUTE = '_datadog_start_time'
 
     def __init__(self):
         app_name = settings.DATADOG_APP_NAME
         self.error_metric = '{0}.errors'.format(app_name)
-        self.timing_metric = '{0}.request_time'.format(app_name)
+        self.timing_metric = '{0}.response_time'.format(app_name)
         self.event_tags = [app_name, 'exception']
 
     def process_request(self, request):
@@ -36,11 +40,10 @@ class DatadogMiddleware(object):
             return response
 
         # Calculate request time and submit to Datadog
-        request_time = time.time() - getattr(request, self.DD_TIMING_ATTRIBUTE)
+        response_time = time.time() - getattr(request, self.DD_TIMING_ATTRIBUTE)
         tags = self._get_metric_tags(request)
 
-        api.Metric.send(metric=self.timing_metric, points=request_time, 
-                        tags=tags)
+        api.Metric.send(metric=self.timing_metric, points=response_time, tags=tags)
 
         return response
 
@@ -57,7 +60,7 @@ class DatadogMiddleware(object):
         # Make request.META json-serializable.
         szble = {}
         for k, v in request.META.items():
-            if isinstance(v, (list, basestring, bool, int, float, long)):
+            if isinstance(v, string_types + integer_types + (list, bool, float)):  # TODO: check within the list
                 szble[k] = v
             else:
                 szble[k] = str(v)
@@ -67,7 +70,9 @@ class DatadogMiddleware(object):
             .format(exc, json.dumps(szble, indent=2))
 
         # Submit the exception to Datadog
-        api.Event.create(title=title, text=text, tags=self.event_tags, 
+        api.Event.create(title=title,
+                         text=text,
+                         tags=self.event_tags,
                          aggregation_key=request.path,
                          alert_type='error')
 
