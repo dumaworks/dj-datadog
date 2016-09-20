@@ -18,6 +18,20 @@ from django.http import Http404
 from datadog import api, initialize, statsd
 
 
+def log_on_debug(func):
+    def wrapper(*args, **kwargs):
+        if settings.DEBUG:
+            print "Arguments passed to ", func.__name__
+            print args
+            print kwargs
+        else:
+            return func(*args, **kwargs)
+    return wrapper
+
+api = log_on_debug(api)
+initialize = log_on_debug(initialize)
+statsd = log_on_debug(statsd)
+
 # init datadog api
 initialize(api_key=settings.DATADOG_API_KEY, app_key=settings.DATADOG_APP_KEY)
 
