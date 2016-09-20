@@ -40,10 +40,12 @@ class DatadogMiddleware(object):
             return response
 
         # Calculate request time and submit to Datadog
-        response_time = time.time() - getattr(request, self.DD_TIMING_ATTRIBUTE)
+        response_time = time.time() - getattr(request,
+                                              self.DD_TIMING_ATTRIBUTE)
         tags = self._get_metric_tags(request)
 
-        api.Metric.send(metric=self.timing_metric, points=response_time, tags=tags)
+        api.Metric.send(metric=self.timing_metric,
+                        points=response_time, tags=tags)
 
         return response
 
@@ -60,7 +62,9 @@ class DatadogMiddleware(object):
         # Make request.META json-serializable.
         szble = {}
         for k, v in request.META.items():
-            if isinstance(v, string_types + integer_types + (list, bool, float)):  # TODO: check within the list
+            if isinstance(v,
+                          string_types + integer_types + (list, bool, float)):
+                # TODO: check within the list
                 szble[k] = v
             else:
                 szble[k] = str(v)

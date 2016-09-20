@@ -15,7 +15,8 @@ setup(
     packages=['dj_datadog'],
     include_package_data=True,
     license='BSD',
-    description=' simple Django middleware for submitting timings and exceptions to Datadog.',
+    description=('A simple Django middleware for submitting '
+                 'timings and exceptions to Datadog.'),
     long_description=README,
     author='Conor Branagan',
     author_email='conor.branagan@gmail.com',
