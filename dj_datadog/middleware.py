@@ -28,7 +28,7 @@ class DatadogMiddleware(object):
     def __init__(self):
         app_name = settings.DATADOG_APP_NAME
         self.error_metric = '{0}.errors'.format(app_name)
-        self.timing_metric = '{0}.response_time'.format(app_name)
+        self.timing_metric = '{0}.request_time'.format(app_name)
         self.event_tags = [app_name, 'exception']
 
     def process_request(self, request):
