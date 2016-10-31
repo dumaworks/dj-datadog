@@ -38,6 +38,14 @@ Add the Datadog request handler to your middleware in `settings.py`.
 MIDDLEWARE_CLASSES += ('dj_datadog.middleware.DatadogMiddleware',)
 ```
 
+For local development, you can add this to your `settings.py` file:
+
+```python
+DJ_DATADOG_DEBUG = True
+```
+
+The metrics will then be logged locally instead of making requests to Datadog.
+
 ## Usage
 
 Once the middlewhere installed, you'll start receiving events in your Datadog

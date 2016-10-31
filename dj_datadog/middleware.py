@@ -1,6 +1,7 @@
 # std lib
 import time
 import traceback
+import logging
 
 try:
     import json
@@ -18,8 +19,43 @@ from django.http import Http404
 from datadog import api, initialize, statsd
 
 
+logger = logging.getLogger(__name__)
+
+try:
+    dj_debug = settings.DJ_DATADOG_DEBUG
+except AttributeError:
+    dj_debug = False
+
 # init datadog api
-initialize(api_key=settings.DATADOG_API_KEY, app_key=settings.DATADOG_APP_KEY)
+if not dj_debug:
+    initialize(api_key=settings.DATADOG_API_KEY,
+               app_key=settings.DATADOG_APP_KEY)
+else:
+    logger.info('Intializing dj_datadog')
+
+
+def send_metric(*args, **kwargs):
+    """Sends datadog api metric if non-debug mode
+
+    Accepts the same parameters as `datadog.api.Metric.send`
+    In debug mode, the metrics are sent to log file instead"""
+
+    if not dj_debug:
+        api.Metric.send(*args, **kwargs)
+    else:
+        logger.info("datadog metrics: %r %r " % (args, kwargs,))
+
+
+def create_event(*args, **kwargs):
+    """Creates a datadog event if non-debug mode
+
+    Accepts the same parameters as `datadog.api.Event.create`
+    In debug mode, the metrics are sent to log file instead"""
+
+    if not dj_debug:
+        api.Event.create(*args, **kwargs)
+    else:
+        logger.info("datadog event: %r %r" % (args, kwargs,))
 
 
 class DatadogMiddleware(object):
@@ -44,8 +80,8 @@ class DatadogMiddleware(object):
                                               self.DD_TIMING_ATTRIBUTE)
         tags = self._get_metric_tags(request)
 
-        api.Metric.send(metric=self.timing_metric,
-                        points=response_time, tags=tags)
+        send_metric(metric=self.timing_metric,
+                    points=response_time, tags=tags)
 
         return response
 
@@ -74,11 +110,11 @@ class DatadogMiddleware(object):
             .format(exc, json.dumps(szble, indent=2))
 
         # Submit the exception to Datadog
-        api.Event.create(title=title,
-                         text=text,
-                         tags=self.event_tags,
-                         aggregation_key=request.path,
-                         alert_type='error')
+        create_event(title=title,
+                     text=text,
+                     tags=self.event_tags,
+                     aggregation_key=request.path,
+                     alert_type='error')
 
         # Increment our errors metric
         tags = self._get_metric_tags(request)
