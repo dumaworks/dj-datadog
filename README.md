@@ -38,6 +38,15 @@ Add the Datadog request handler to your middleware in `settings.py`.
 MIDDLEWARE_CLASSES += ('dj_datadog.middleware.DatadogMiddleware',)
 ```
 
+If you want log the wsgi process memory spikes per request/response cycle, add 
+the memory profiling middleware (see [this link][1] for more info)
+
+[1]: https://stackoverflow.com/a/12254394
+
+```python
+MIDDLEWARE_CLASSES += ('dj_datadog.middleware.MemoryUsageMiddleware',)
+```
+
 For local development, you can add this to your `settings.py` file:
 
 ```python
@@ -51,10 +60,11 @@ The metrics will then be logged locally instead of making requests to Datadog.
 Once the middlewhere installed, you'll start receiving events in your Datadog
 stream in the case of an app exception.
 
-You will also have new timing metrics available:
+You will also have the following new metrics available:
 
-- `my_app.request_time.{avg,max,min}`
+- `my_app.request_time.{avg,max,min}` in seconds
 - `my_app.errors`
+- `my_app.memory_usage` in MB (if the memory usage middleware is used)
 
 Metrics are tagged with `path:/path/to/view`
 

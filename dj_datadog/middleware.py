@@ -2,21 +2,21 @@
 import time
 import traceback
 import logging
+import os
 
 try:
     import json
 except ImportError:
     import simplejson as json
 
-# six
-from six import integer_types, string_types
-
 # django
 from django.conf import settings
 from django.http import Http404
 
-# datadog
+# third party
 from datadog import api, initialize, statsd
+from six import integer_types, string_types
+import psutil
 
 
 logger = logging.getLogger(__name__)
@@ -58,6 +58,36 @@ def create_event(*args, **kwargs):
         logger.info("datadog event: %r %r" % (args, kwargs,))
 
 
+class MemoryUsageMiddleware(object):
+    DD_MEM_ATTR = '_datadog_mem'
+    MEM_METRIC = '{0}.memory_usage'.format(settings.DATADOG_APP_NAME)
+
+    def process_request(self, request):
+        mem_info = psutil.Process(os.getpid()).memory_info()
+        setattr(request, self.DD_MEM_ATTR, mem_info)
+
+    def process_response(self, request, response):
+        """Submit metrics on memory usage spike"""
+
+        if not hasattr(request, self.DD_MEM_ATTR):
+            return response
+
+        curr = psutil.Process(os.getpid()).memory_info()
+        prev = getattr(request, self.DD_MEM_ATTR)
+        diff = curr.rss - prev.rss
+        mb = float(diff) / 1000000
+
+        tags = self._get_metric_tags(request)
+
+        send_metric(metric=self.MEM_METRIC,
+                    points=mb, tags=tags)
+
+        return response
+
+    def _get_metric_tags(self, request):
+        return ['path:{0}'.format(request.path)]
+
+
 class DatadogMiddleware(object):
     DD_TIMING_ATTRIBUTE = '_datadog_start_time'
 
@@ -72,6 +102,7 @@ class DatadogMiddleware(object):
 
     def process_response(self, request, response):
         """ Submit timing metrics from the current request """
+
         if not hasattr(request, self.DD_TIMING_ATTRIBUTE):
             return response
 
